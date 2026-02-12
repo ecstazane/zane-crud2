@@ -1,21 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+import ConfirmationModal from '../components/ConfirmationModal';
+
 const AuditLogViewer = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-    useEffect(() => {
+    const fetchLogs = () => {
+        setLoading(true);
         axios.get('http://localhost:5001/api/admin/audit-logs')
             .then(res => {
                 setLogs(res.data);
                 setLoading(false);
+                setSelectedIds(new Set());
             })
             .catch(err => {
                 console.error(err);
                 setLoading(false);
             });
+    };
+
+    useEffect(() => {
+        fetchLogs();
     }, []);
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(new Set(logs.map(log => log._id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+
+    const handleSelectRow = (id) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleConfirmDelete = async () => {
+        try {
+            await axios.post('http://localhost:5001/api/admin/audit-logs/batch-delete', {
+                ids: Array.from(selectedIds)
+            });
+            fetchLogs();
+            setShowConfirmModal(false);
+        } catch (err) {
+            alert('Error deleting logs');
+        }
+    };
 
     const getActionStyle = (action) => {
         const styles = {
@@ -38,9 +78,19 @@ const AuditLogViewer = () => {
 
     return (
         <div className="fade-in">
-            <div className="mb-6">
-                <h1 className="text-xl font-semibold text-neutral-900">Audit Logs</h1>
-                <p className="text-sm text-neutral-500">Track all changes</p>
+            <div className="mb-6 flex justify-between items-center">
+                <div>
+                    <h1 className="text-xl font-semibold text-neutral-900">Audit Logs</h1>
+                    <p className="text-sm text-neutral-500">Track all changes</p>
+                </div>
+                {selectedIds.size > 0 && (
+                    <button
+                        onClick={() => setShowConfirmModal(true)}
+                        className="bg-red-50 text-red-600 border border-red-100 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-100 transition-colors animate-fade-in"
+                    >
+                        Delete Selected ({selectedIds.size})
+                    </button>
+                )}
             </div>
 
             <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
@@ -48,6 +98,15 @@ const AuditLogViewer = () => {
                     <table className="min-w-full divide-y divide-neutral-200">
                         <thead className="bg-neutral-50">
                             <tr>
+                                <th className="px-4 py-3 text-left w-10">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                        checked={logs.length > 0 && selectedIds.size === logs.length}
+                                        onChange={handleSelectAll}
+                                        disabled={logs.length === 0}
+                                    />
+                                </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Time</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Entity</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Action</th>
@@ -57,7 +116,15 @@ const AuditLogViewer = () => {
                         </thead>
                         <tbody className="divide-y divide-neutral-100">
                             {logs.map(log => (
-                                <tr key={log._id} className="hover:bg-neutral-50 transition-colors">
+                                <tr key={log._id} className={`hover:bg-neutral-50 transition-colors ${selectedIds.has(log._id) ? 'bg-neutral-50' : ''}`}>
+                                    <td className="px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                            checked={selectedIds.has(log._id)}
+                                            onChange={() => handleSelectRow(log._id)}
+                                        />
+                                    </td>
                                     <td className="px-4 py-3 text-sm text-neutral-500 whitespace-nowrap">
                                         {new Date(log.timestamp).toLocaleString()}
                                     </td>
@@ -84,7 +151,7 @@ const AuditLogViewer = () => {
                             ))}
                             {logs.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-12 text-center text-neutral-400 text-sm">
+                                    <td colSpan={6} className="px-4 py-12 text-center text-neutral-400 text-sm">
                                         No logs yet
                                     </td>
                                 </tr>
@@ -93,6 +160,15 @@ const AuditLogViewer = () => {
                     </table>
                 </div>
             </div>
+            <ConfirmationModal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                onConfirm={handleConfirmDelete}
+                title="Delete Audit Logs"
+                message={`Are you sure you want to permanently delete ${selectedIds.size} audit log(s)?`}
+                confirmText={`Delete ${selectedIds.size} Log(s)`}
+                isDanger={true}
+            />
         </div>
     );
 };

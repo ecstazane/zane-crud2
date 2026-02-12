@@ -9,8 +9,7 @@ const dynamicRoutes = require('./routes/dynamicRoutes');
 const AuditLog = require('./models/AuditLog');
 
 const app = express();
-const PORT = process.env.PORT || 5001; // Changed back to 5001 as per previous turns
-console.log('Using port:', PORT);
+const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json());
@@ -35,7 +34,7 @@ dynamicRoutes.initModels(initializedModels);
 
 // 4. API Routes
 app.get('/', (req, res) => {
-    res.send('✓ CRUD Zane2 Backend is running. API is available at /api');
+    res.send('API is available at /api');
 });
 
 app.get('/api/config/models', (req, res) => {
@@ -46,6 +45,20 @@ app.get('/api/admin/audit-logs', async (req, res) => {
     try {
         const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(100);
         res.json(logs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/audit-logs/batch-delete', async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs array is required' });
+        }
+
+        const result = await AuditLog.deleteMany({ _id: { $in: ids } });
+        res.json({ message: 'Audit logs deleted', count: result.deletedCount });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

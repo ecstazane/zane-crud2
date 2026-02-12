@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const DynamicTable = ({ models }) => {
     const { model: modelName } = useParams();
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showArchiveModal, setShowArchiveModal] = useState(false);
+    const [itemToArchive, setItemToArchive] = useState(null);
+    const [selectedIds, setSelectedIds] = useState(new Set());
 
     const modelConfig = models[modelName] || {};
     const fields = Object.keys(modelConfig);
@@ -27,13 +31,46 @@ const DynamicTable = ({ models }) => {
         if (modelName) fetchData();
     }, [modelName]);
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Move to archive?')) return;
+    const handleArchiveClick = (id) => {
+        setItemToArchive(id);
+        setShowArchiveModal(true);
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(new Set(data.map(item => item._id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+
+    const handleSelectRow = (id) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleConfirmArchive = async () => {
         try {
-            await axios.delete(`http://localhost:5001/api/${modelName}/${id}`);
+            if (itemToArchive) {
+                // Single item archive
+                await axios.delete(`http://localhost:5001/api/${modelName}/${itemToArchive}`);
+            } else {
+                // Batch archive
+                await axios.post(`http://localhost:5001/api/${modelName}/batch-archive`, {
+                    ids: Array.from(selectedIds)
+                });
+            }
             fetchData();
+            setShowArchiveModal(false);
+            setItemToArchive(null);
+            setSelectedIds(new Set()); // Clear selection
         } catch (err) {
-            alert('Error archiving item');
+            alert('Error archiving item(s)');
         }
     };
 
@@ -83,12 +120,25 @@ const DynamicTable = ({ models }) => {
                         Displaying {data.length} {data.length === 1 ? 'record' : 'records'}
                     </p>
                 </div>
-                <Link
-                    to={`/${modelName}/add`}
-                    className="inline-flex items-center gap-2 bg-neutral-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-all shadow-sm"
-                >
-                    <span className="text-lg">+</span> Add {modelName}
-                </Link>
+                <div className="flex gap-2">
+                    {data.length > 0 && selectedIds.size > 0 && (
+                        <button
+                            onClick={() => {
+                                setItemToArchive(null); // Ensure no single item is selected
+                                setShowArchiveModal(true);
+                            }}
+                            className="inline-flex items-center gap-2 bg-white text-neutral-600 border border-neutral-200 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-neutral-50 hover:text-red-600 transition-all shadow-sm"
+                        >
+                            Archive Selected ({selectedIds.size})
+                        </button>
+                    )}
+                    <Link
+                        to={`/${modelName}/add`}
+                        className="inline-flex items-center gap-2 bg-neutral-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-all shadow-sm"
+                    >
+                        <span className="text-lg">+</span> Add {modelName}
+                    </Link>
+                </div>
             </div>
 
             <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
@@ -96,6 +146,15 @@ const DynamicTable = ({ models }) => {
                     <table className="min-w-full divide-y divide-neutral-200">
                         <thead className="bg-neutral-50/50">
                             <tr>
+                                <th className="px-6 py-4 text-left w-10">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                        checked={data.length > 0 && selectedIds.size === data.length}
+                                        onChange={handleSelectAll}
+                                        disabled={data.length === 0}
+                                    />
+                                </th>
                                 {fields.map(field => (
                                     <th key={field} className="px-6 py-4 text-left text-xs font-bold text-neutral-500 uppercase tracking-widest">
                                         {modelConfig[field].label || field}
@@ -106,7 +165,15 @@ const DynamicTable = ({ models }) => {
                         </thead>
                         <tbody className="divide-y divide-neutral-100">
                             {data.map(item => (
-                                <tr key={item._id} className="hover:bg-neutral-50/30 transition-colors group">
+                                <tr key={item._id} className={`hover:bg-neutral-50/30 transition-colors group ${selectedIds.has(item._id) ? 'bg-neutral-50' : ''}`}>
+                                    <td className="px-6 py-4 text-sm text-neutral-700">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                            checked={selectedIds.has(item._id)}
+                                            onChange={() => handleSelectRow(item._id)}
+                                        />
+                                    </td>
                                     {fields.map(field => (
                                         <td key={field} className="px-6 py-4 text-sm text-neutral-700">
                                             {renderCellValue(item, field)}
@@ -117,7 +184,7 @@ const DynamicTable = ({ models }) => {
                                             Edit
                                         </Link>
                                         <button
-                                            onClick={() => handleDelete(item._id)}
+                                            onClick={() => handleArchiveClick(item._id)}
                                             className="text-neutral-300 hover:text-red-500 font-semibold transition-colors"
                                         >
                                             Archive
@@ -127,7 +194,7 @@ const DynamicTable = ({ models }) => {
                             ))}
                             {data.length === 0 && (
                                 <tr>
-                                    <td colSpan={fields.length + 1} className="px-6 py-16 text-center text-neutral-400 text-sm">
+                                    <td colSpan={fields.length + 2} className="px-6 py-16 text-center text-neutral-400 text-sm">
                                         No {modelName.toLowerCase()} records found.
                                     </td>
                                 </tr>
@@ -136,6 +203,19 @@ const DynamicTable = ({ models }) => {
                     </table>
                 </div>
             </div>
+
+            <ConfirmationModal
+                isOpen={showArchiveModal}
+                onClose={() => setShowArchiveModal(false)}
+                onConfirm={handleConfirmArchive}
+                title={itemToArchive ? "Archive Item" : "Archive All Items"}
+                message={itemToArchive
+                    ? "Are you sure you want to move this item to the archive? You can restore it later."
+                    : `Are you sure you want to move ${selectedIds.size} ${modelName} record(s) to the archive? You can restore them later.`
+                }
+                confirmText={itemToArchive ? "Archive" : `Archive ${selectedIds.size} Item(s)`}
+                isDanger={true}
+            />
         </div>
     );
 };

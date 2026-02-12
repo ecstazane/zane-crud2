@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const AuditLog = require('../models/AuditLog');
 
@@ -117,6 +118,27 @@ router.put('/:model/:id', resolveModel, async (req, res) => {
     }
 });
 
+// DELETE All Archived
+router.delete('/:model/archived/all', resolveModel, async (req, res) => {
+    try {
+        const result = await req.Model.deleteMany({ isDeleted: true });
+
+        await AuditLog.create({
+            entity: req.params.model,
+            entityId: new mongoose.Types.ObjectId(), // Placeholder ID
+            action: 'DELETE',
+            changes: {
+                action: 'DELETE_ALL_ARCHIVED',
+                count: result.deletedCount
+            }
+        });
+
+        res.json({ message: 'All archived items permanently deleted', count: result.deletedCount });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // DELETE Permanent
 router.delete('/:model/:id/permanent', resolveModel, async (req, res) => {
     try {
@@ -131,6 +153,117 @@ router.delete('/:model/:id/permanent', resolveModel, async (req, res) => {
         });
 
         res.json({ message: 'Item permanently deleted', id: item._id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE Soft Delete All
+router.delete('/:model', resolveModel, async (req, res) => {
+    try {
+        const result = await req.Model.updateMany(
+            { isDeleted: false },
+            { isDeleted: true, deletedAt: new Date() }
+        );
+
+        await AuditLog.create({
+            entity: req.params.model,
+            entityId: new mongoose.Types.ObjectId(), // Placeholder ID
+            action: 'SOFT_DELETE',
+            changes: {
+                action: 'SOFT_DELETE_ALL',
+                count: result.modifiedCount
+            }
+        });
+
+        res.json({ message: 'All items soft deleted', count: result.modifiedCount });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST Batch Archive
+router.post('/:model/batch-archive', resolveModel, async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs array is required' });
+        }
+
+        const result = await req.Model.updateMany(
+            { _id: { $in: ids }, isDeleted: false },
+            { isDeleted: true, deletedAt: new Date() }
+        );
+
+        await AuditLog.create({
+            entity: req.params.model,
+            entityId: new mongoose.Types.ObjectId(), // Placeholder
+            action: 'SOFT_DELETE',
+            changes: {
+                action: 'BATCH_SOFT_DELETE',
+                count: result.modifiedCount,
+                ids: ids
+            }
+        });
+
+        res.json({ message: 'Items soft deleted', count: result.modifiedCount });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST Batch Restore
+router.post('/:model/batch-restore', resolveModel, async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs array is required' });
+        }
+
+        const result = await req.Model.updateMany(
+            { _id: { $in: ids }, isDeleted: true },
+            { isDeleted: false, deletedAt: null }
+        );
+
+        await AuditLog.create({
+            entity: req.params.model,
+            entityId: new mongoose.Types.ObjectId(), // Placeholder
+            action: 'RESTORE',
+            changes: {
+                action: 'BATCH_RESTORE',
+                count: result.modifiedCount,
+                ids: ids
+            }
+        });
+
+        res.json({ message: 'Items restored', count: result.modifiedCount });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST Batch Permanent Delete
+router.post('/:model/batch-permanent-delete', resolveModel, async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs array is required' });
+        }
+
+        const result = await req.Model.deleteMany({ _id: { $in: ids } });
+
+        await AuditLog.create({
+            entity: req.params.model,
+            entityId: new mongoose.Types.ObjectId(), // Placeholder
+            action: 'DELETE',
+            changes: {
+                action: 'BATCH_PERMANENT_DELETE',
+                count: result.deletedCount,
+                ids: ids
+            }
+        });
+
+        res.json({ message: 'Items permanently deleted', count: result.deletedCount });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

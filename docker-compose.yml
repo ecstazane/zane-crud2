@@ -1,9 +1,11 @@
-version: '3.8'
 services:
   client:
     build: ./client
     ports:
       - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
     depends_on:
       - server
     restart: unless-stopped
@@ -15,6 +17,10 @@ services:
     environment:
       - PORT=5001
       - MONGO_URI=mongodb://mongo:27017/crud-zane2
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm run dev
     depends_on:
       - mongo
     restart: unless-stopped
