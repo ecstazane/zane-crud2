@@ -16,7 +16,6 @@ const DynamicForm = ({ models }) => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Formats any date value to YYYY-MM-DD for the HTML5 date input
     const formatDateForInput = (dateVal) => {
         if (!dateVal) return '';
         const date = new Date(dateVal);
@@ -29,7 +28,6 @@ const DynamicForm = ({ models }) => {
             axios.get(`http://localhost:5001/api/${modelName}/${id}`)
                 .then(res => {
                     const fetchedData = { ...res.data };
-                    // Pre-process Date fields for the input
                     fields.forEach(f => {
                         if (modelConfig[f].type === 'Date') {
                             fetchedData[f] = formatDateForInput(fetchedData[f]);
@@ -43,7 +41,6 @@ const DynamicForm = ({ models }) => {
                     setLoading(false);
                 });
         } else {
-            // Set defaults based on metadata
             const defaults = {};
             fields.forEach(f => {
                 if (modelConfig[f].default !== undefined) defaults[f] = modelConfig[f].default;
@@ -94,7 +91,6 @@ const DynamicForm = ({ models }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Final validation check
         const finalErrors = {};
         fields.forEach(f => {
             const err = validateField(f, formData[f]);
@@ -109,7 +105,6 @@ const DynamicForm = ({ models }) => {
 
         setSaving(true);
         try {
-            // Apply Postel's Law: Trim string inputs before sending
             const submissionData = { ...formData };
             fields.forEach(f => {
                 if (modelConfig[f].type === 'String' && typeof submissionData[f] === 'string') {
@@ -142,18 +137,18 @@ const DynamicForm = ({ models }) => {
         <div className="fade-in max-w-xl mx-auto">
             <button
                 onClick={() => navigate(`/${modelName}`)}
-                className="text-sm text-neutral-500 hover:text-neutral-900 mb-8 flex items-center gap-2 transition-colors font-medium text-xs uppercase tracking-wider"
+                className="text-sm text-neutral-500 hover:text-neutral-900 mb-6 md:mb-8 flex items-center gap-2 transition-colors font-medium text-xs uppercase tracking-wider min-h-[44px]"
             >
                 ← Back to {modelName}
             </button>
 
-            <div className="bg-white border border-neutral-200 rounded-2xl p-8 shadow-sm">
-                <div className="mb-8">
-                    <h1 className="text-xl font-bold text-neutral-900">{isEdit ? 'Update' : 'Create New'} {modelName}</h1>
+            <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
+                <div className="mb-6 md:mb-8">
+                    <h1 className="text-lg md:text-xl font-bold text-neutral-900">{isEdit ? 'Update' : 'Create New'} {modelName}</h1>
                     <p className="text-sm text-neutral-500 mt-1">Please fill in the details below.</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
                     {fields.map(field => {
                         const config = modelConfig[field];
                         const error = touched[field] ? errors[field] : '';
@@ -166,7 +161,7 @@ const DynamicForm = ({ models }) => {
                                 </label>
 
                                 {config.type === 'Boolean' ? (
-                                    <label className="flex items-center gap-3 cursor-pointer group bg-neutral-50 p-3 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-all">
+                                    <label className="flex items-center gap-3 cursor-pointer group bg-neutral-50 p-3 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-all min-h-[48px]">
                                         <input
                                             type="checkbox"
                                             name={field}
@@ -184,7 +179,7 @@ const DynamicForm = ({ models }) => {
                                         value={formData[field] || ''}
                                         onChange={handleChange}
                                         onBlur={handleBlur}
-                                        className={`w-full px-4 py-3 border rounded-xl text-sm focus:ring-2 focus:ring-neutral-900/5 focus:border-neutral-900 bg-white transition-all outline-none
+                                        className={`w-full px-4 py-3 min-h-[48px] border rounded-xl text-sm focus:ring-2 focus:ring-neutral-900/5 focus:border-neutral-900 bg-white transition-all outline-none
                                             ${error ? 'border-red-400 bg-red-50/30' : 'border-neutral-200'}`}
                                     >
                                         <option value="">Select option...</option>
@@ -197,7 +192,7 @@ const DynamicForm = ({ models }) => {
                                         value={formData[field] ?? ''}
                                         onChange={handleChange}
                                         onBlur={handleBlur}
-                                        className={`w-full px-4 py-3 border rounded-xl text-sm focus:ring-2 focus:ring-neutral-900/5 focus:border-neutral-900 transition-all outline-none
+                                        className={`w-full px-4 py-3 min-h-[48px] border rounded-xl text-sm focus:ring-2 focus:ring-neutral-900/5 focus:border-neutral-900 transition-all outline-none
                                             ${error ? 'border-red-400 bg-red-50/30' : 'border-neutral-200'}`}
                                         placeholder={`Enter ${field.toLowerCase()}...`}
                                     />
@@ -208,18 +203,18 @@ const DynamicForm = ({ models }) => {
                         );
                     })}
 
-                    <div className="pt-6 flex items-center justify-end gap-4 border-t border-neutral-100">
+                    <div className="pt-6 flex flex-col-reverse sm:flex-row items-center sm:justify-end gap-3 sm:gap-4 border-t border-neutral-100">
                         <button
                             type="button"
                             onClick={() => navigate(`/${modelName}`)}
-                            className="px-6 py-2.5 text-sm font-semibold text-neutral-500 hover:text-neutral-900 transition-colors"
+                            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 text-sm font-semibold text-neutral-500 hover:text-neutral-900 transition-colors rounded-xl hover:bg-neutral-50 min-h-[48px] sm:min-h-0"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
-                            className="px-8 py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-bold hover:bg-neutral-800 disabled:opacity-50 transition-all shadow-md shadow-neutral-200"
+                            className="w-full sm:w-auto px-8 py-3 sm:py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-bold hover:bg-neutral-800 disabled:opacity-50 transition-all shadow-md shadow-neutral-200 min-h-[48px] sm:min-h-0"
                         >
                             {saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Create Record')}
                         </button>

@@ -59,10 +59,8 @@ const DynamicTable = ({ models }) => {
     const handleConfirmArchive = async () => {
         try {
             if (itemToArchive) {
-                // Single item archive
                 await axios.delete(`http://localhost:5001/api/${modelName}/${itemToArchive}`);
             } else {
-                // Batch archive
                 await axios.post(`http://localhost:5001/api/${modelName}/batch-archive`, {
                     ids: Array.from(selectedIds)
                 });
@@ -70,20 +68,18 @@ const DynamicTable = ({ models }) => {
             fetchData();
             setShowArchiveModal(false);
             setItemToArchive(null);
-            setSelectedIds(new Set()); // Clear selection
+            setSelectedIds(new Set());
         } catch (err) {
             alert('Error archiving item(s)');
         }
     };
 
-    // Helper to format values based on metadata type
     const renderCellValue = (item, field) => {
         const value = item[field];
         const config = modelConfig[field];
 
         if (value === undefined || value === null || value === '') return '-';
 
-        // Dynamic type detection and rendering
         switch (config?.type) {
             case 'Boolean':
                 return (
@@ -115,35 +111,96 @@ const DynamicTable = ({ models }) => {
 
     return (
         <div className="fade-in">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">{modelName}</h1>
+                    <h1 className="text-xl md:text-2xl font-bold text-neutral-900 tracking-tight">{modelName}</h1>
                     <p className="text-sm text-neutral-500 mt-1">
                         Displaying {data.length} {data.length === 1 ? 'record' : 'records'}
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                     {data.length > 0 && selectedIds.size > 0 && (
                         <button
                             onClick={() => {
-                                setItemToArchive(null); // Ensure no single item is selected
+                                setItemToArchive(null);
                                 setShowArchiveModal(true);
                             }}
-                            className="inline-flex items-center gap-2 bg-white text-neutral-600 border border-neutral-200 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-neutral-50 hover:text-red-600 transition-all shadow-sm"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-white text-neutral-600 border border-neutral-200 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-neutral-50 hover:text-red-600 transition-all shadow-sm"
                         >
-                            Archive Selected ({selectedIds.size})
+                            Archive ({selectedIds.size})
                         </button>
                     )}
                     <Link
                         to={`/${modelName}/add`}
-                        className="inline-flex items-center gap-2 bg-neutral-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-all shadow-sm"
+                        className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-neutral-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-all shadow-sm"
                     >
-                        <span className="text-lg">+</span> Add {modelName}
+                        <span className="text-lg leading-none">+</span> Add {modelName}
                     </Link>
                 </div>
             </div>
 
-            <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
+            {/* Mobile Card Layout */}
+            <div className="md:hidden space-y-3">
+                {data.length > 0 && (
+                    <label className="flex items-center gap-3 px-1 py-2 text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                        <input
+                            type="checkbox"
+                            className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                            checked={data.length > 0 && selectedIds.size === data.length}
+                            onChange={handleSelectAll}
+                        />
+                        Select all
+                    </label>
+                )}
+                {data.map(item => (
+                    <div
+                        key={item._id}
+                        className={`bg-white border rounded-xl p-4 shadow-sm transition-all ${selectedIds.has(item._id) ? 'border-neutral-400 bg-neutral-50/50' : 'border-neutral-200'}`}
+                    >
+                        <div className="flex items-start gap-3">
+                            <input
+                                type="checkbox"
+                                className="mt-1 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                checked={selectedIds.has(item._id)}
+                                onChange={() => handleSelectRow(item._id)}
+                            />
+                            <div className="flex-1 min-w-0" onClick={() => setPreviewItem(item)}>
+                                {fields.map((field, i) => (
+                                    <div key={field} className={i === 0 ? 'mb-3' : 'flex justify-between items-baseline py-1.5 border-t border-neutral-50'}>
+                                        {i === 0 ? (
+                                            <p className="text-sm font-bold text-neutral-900 truncate">{renderCellValue(item, field)}</p>
+                                        ) : (
+                                            <>
+                                                <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">{modelConfig[field].label || field}</span>
+                                                <span className="text-sm text-neutral-700 text-right ml-2">{renderCellValue(item, field)}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-neutral-100 pl-7">
+                            <Link to={`/${modelName}/edit/${item._id}`} className="text-sm text-neutral-600 hover:text-neutral-950 font-semibold">
+                                Edit
+                            </Link>
+                            <button
+                                onClick={() => handleArchiveClick(item._id)}
+                                className="text-sm text-neutral-300 hover:text-red-500 font-semibold transition-colors"
+                            >
+                                Archive
+                            </button>
+                        </div>
+                    </div>
+                ))}
+                {data.length === 0 && (
+                    <div className="bg-white border border-dashed border-neutral-200 rounded-xl p-12 text-center text-neutral-400 text-sm">
+                        No {modelName?.toLowerCase()} records found.
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden md:block bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-neutral-200">
                         <thead className="bg-neutral-50/50">
