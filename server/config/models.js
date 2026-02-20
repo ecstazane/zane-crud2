@@ -6,12 +6,12 @@ module.exports = {
     price: { type: 'Number', required: true, label: 'Price (₱)', min: 0, max: 100000000 },
     inStock: { type: 'Boolean', label: 'In Stock', default: true }
   },
-  Movie: {
-    title: { type: 'String', required: true, label: 'Title', minLength: 1, maxLength: 200 },
-    director: { type: 'String', required: true, label: 'Director', minLength: 2, maxLength: 100 },
-    year: { type: 'Number', required: true, label: 'Release Year', min: 1888, max: 2030 },
-    releaseDate: { type: 'Date', label: 'Release Date' },
-    genre: { type: 'String', label: 'Genre', options: ['Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi', 'Romance'] },
-    rating: { type: 'Number', label: 'Rating (1-10)', min: 1, max: 10 }
+  Employee: {
+    name: { type: 'String', required: true, label: 'Name', minLength: 2, maxLength: 50 },
+    email: { type: 'email', required: true, label: 'Email', minLength: 2, maxLength: 50, unique: true },
+    phone: { type: 'Number', required: true, label: 'Phone', minLength: 2, maxLength: 50 },
+    id: { type: 'String', required: true, label: 'ID', minLength: 2, maxLength: 50, unique: true },
+    position: { type: 'String', required: true, label: 'Position', minLength: 2, maxLength: 50 },
+    salary: { type: 'Number', required: true, label: 'Salary (₱)', min: 0, max: 100000000 }
   }
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ConfirmationModal from '../components/ConfirmationModal';
+import DetailPreviewModal from '../components/DetailPreviewModal';
 
 const ArchiveView = ({ models }) => {
     const [selectedModel, setSelectedModel] = useState('');
@@ -15,6 +16,7 @@ const ArchiveView = ({ models }) => {
         onConfirm: () => { }
     });
     const [selectedIds, setSelectedIds] = useState(new Set());
+    const [previewItem, setPreviewItem] = useState(null);
 
     const modelNames = Object.keys(models);
     const modelConfig = models[selectedModel] || {};
@@ -210,8 +212,8 @@ const ArchiveView = ({ models }) => {
                                 </thead>
                                 <tbody className="divide-y divide-neutral-100">
                                     {data.map(item => (
-                                        <tr key={item._id} className={`group hover:bg-neutral-50/30 transition-colors ${selectedIds.has(item._id) ? 'bg-neutral-50' : ''}`}>
-                                            <td className="px-6 py-4 text-sm text-neutral-700">
+                                        <tr key={item._id} onClick={() => setPreviewItem(item)} className={`group hover:bg-neutral-50/30 transition-colors cursor-pointer ${selectedIds.has(item._id) ? 'bg-neutral-50' : ''}`}>
+                                            <td className="px-6 py-4 text-sm text-neutral-700" onClick={e => e.stopPropagation()}>
                                                 <input
                                                     type="checkbox"
                                                     className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
@@ -227,7 +229,7 @@ const ArchiveView = ({ models }) => {
                                             <td className="px-6 py-4 text-sm text-neutral-400 italic">
                                                 {item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '-'}
                                             </td>
-                                            <td className="px-6 py-4 text-right text-sm space-x-6">
+                                            <td className="px-6 py-4 text-right text-sm space-x-6" onClick={e => e.stopPropagation()}>
                                                 <button
                                                     onClick={() => handleRestoreClick(item._id)}
                                                     className="text-neutral-600 hover:text-neutral-950 font-bold transition-colors"
@@ -270,6 +272,14 @@ const ArchiveView = ({ models }) => {
                 message={modalConfig.message}
                 confirmText={modalConfig.confirmText}
                 isDanger={modalConfig.isDanger}
+            />
+
+            <DetailPreviewModal
+                isOpen={!!previewItem}
+                onClose={() => setPreviewItem(null)}
+                item={previewItem}
+                modelConfig={modelConfig}
+                modelName={selectedModel}
             />
         </div>
     );

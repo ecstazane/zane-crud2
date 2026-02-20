@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import ConfirmationModal from '../components/ConfirmationModal';
+import DetailPreviewModal from '../components/DetailPreviewModal';
 
 const DynamicTable = ({ models }) => {
     const { model: modelName } = useParams();
@@ -10,6 +11,7 @@ const DynamicTable = ({ models }) => {
     const [showArchiveModal, setShowArchiveModal] = useState(false);
     const [itemToArchive, setItemToArchive] = useState(null);
     const [selectedIds, setSelectedIds] = useState(new Set());
+    const [previewItem, setPreviewItem] = useState(null);
 
     const modelConfig = models[modelName] || {};
     const fields = Object.keys(modelConfig);
@@ -165,8 +167,8 @@ const DynamicTable = ({ models }) => {
                         </thead>
                         <tbody className="divide-y divide-neutral-100">
                             {data.map(item => (
-                                <tr key={item._id} className={`hover:bg-neutral-50/30 transition-colors group ${selectedIds.has(item._id) ? 'bg-neutral-50' : ''}`}>
-                                    <td className="px-6 py-4 text-sm text-neutral-700">
+                                <tr key={item._id} onClick={() => setPreviewItem(item)} className={`hover:bg-neutral-50/30 transition-colors group cursor-pointer ${selectedIds.has(item._id) ? 'bg-neutral-50' : ''}`}>
+                                    <td className="px-6 py-4 text-sm text-neutral-700" onClick={e => e.stopPropagation()}>
                                         <input
                                             type="checkbox"
                                             className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
@@ -179,7 +181,7 @@ const DynamicTable = ({ models }) => {
                                             {renderCellValue(item, field)}
                                         </td>
                                     ))}
-                                    <td className="px-6 py-4 text-right text-sm space-x-4">
+                                    <td className="px-6 py-4 text-right text-sm space-x-4" onClick={e => e.stopPropagation()}>
                                         <Link to={`/${modelName}/edit/${item._id}`} className="text-neutral-600 hover:text-neutral-950 font-semibold">
                                             Edit
                                         </Link>
@@ -215,6 +217,14 @@ const DynamicTable = ({ models }) => {
                 }
                 confirmText={itemToArchive ? "Archive" : `Archive ${selectedIds.size} Item(s)`}
                 isDanger={true}
+            />
+
+            <DetailPreviewModal
+                isOpen={!!previewItem}
+                onClose={() => setPreviewItem(null)}
+                item={previewItem}
+                modelConfig={modelConfig}
+                modelName={modelName}
             />
         </div>
     );
