@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DetailPreviewModal from '../components/DetailPreviewModal';
+import {
+    SwipeableList,
+    SwipeableListItem,
+    SwipeAction,
+    TrailingActions,
+    LeadingActions,
+} from 'react-swipeable-list';
+import 'react-swipeable-list/dist/styles.css';
+import PullToRefresh from 'react-simple-pull-to-refresh';
 
 const ArchiveView = ({ models }) => {
     const [selectedModel, setSelectedModel] = useState('');
@@ -23,9 +32,9 @@ const ArchiveView = ({ models }) => {
     const fields = Object.keys(modelConfig);
 
     const fetchArchived = () => {
-        if (!selectedModel) return;
+        if (!selectedModel) return Promise.resolve();
         setLoading(true);
-        axios.get(`http://localhost:5001/api/${selectedModel}/archived`)
+        return axios.get(`http://localhost:5001/api/${selectedModel}/archived`)
             .then(res => {
                 setData(res.data);
                 setLoading(false);
@@ -192,66 +201,85 @@ const ArchiveView = ({ models }) => {
                         </div>
                     ) : (
                         <>
-                            {/* Mobile Card Layout */}
-                            <div className="md:hidden p-3 space-y-3">
-                                {data.length > 0 && (
-                                    <label className="flex items-center gap-3 px-1 py-2 text-xs font-bold text-neutral-400 uppercase tracking-widest">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                                            checked={data.length > 0 && selectedIds.size === data.length}
-                                            onChange={handleSelectAll}
-                                        />
-                                        Select all
-                                    </label>
-                                )}
-                                {data.map(item => (
-                                    <div
-                                        key={item._id}
-                                        className={`border rounded-xl p-4 transition-all ${selectedIds.has(item._id) ? 'border-neutral-400 bg-neutral-50/50' : 'border-neutral-100 bg-white'}`}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                className="mt-1 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                                                checked={selectedIds.has(item._id)}
-                                                onChange={() => handleSelectRow(item._id)}
-                                            />
-                                            <div className="flex-1 min-w-0" onClick={() => setPreviewItem(item)}>
-                                                {fields.map((field, i) => (
-                                                    <div key={field} className={i === 0 ? 'mb-2' : 'flex justify-between items-baseline py-1 border-t border-neutral-50'}>
-                                                        {i === 0 ? (
-                                                            <p className="text-sm font-bold text-neutral-400 line-through decoration-neutral-300 truncate">{renderCellValue(item, field)}</p>
-                                                        ) : (
-                                                            <>
-                                                                <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">{modelConfig[field].label || field}</span>
-                                                                <span className="text-sm text-neutral-400 line-through decoration-neutral-300 text-right ml-2">{renderCellValue(item, field)}</span>
-                                                            </>
-                                                        )}
+                            {/* Mobile Card Layout with Pull-to-Refresh & Swipe Gestures */}
+                            <div className="md:hidden">
+                                <PullToRefresh onRefresh={fetchArchived} pullDownThreshold={60} maxPullDownDistance={95}>
+                                    <div className="p-3 space-y-3 min-h-[50vh]">
+                                        {data.length > 0 && (
+                                            <label className="flex items-center gap-3 px-1 py-2 text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                                    checked={data.length > 0 && selectedIds.size === data.length}
+                                                    onChange={handleSelectAll}
+                                                />
+                                                Select all
+                                            </label>
+                                        )}
+                                        {data.length > 0 ? (
+                                            <SwipeableList threshold={0.25}>
+                                                {data.map(item => (
+                                                    <div key={item._id} className="mb-3">
+                                                        <SwipeableListItem
+                                                            leadingActions={
+                                                                <LeadingActions>
+                                                                    <SwipeAction onClick={() => handleRestoreClick(item._id)}>
+                                                                        <div className="bg-neutral-900 text-white flex items-center justify-center w-full h-full rounded-xl shadow-sm text-sm font-bold tracking-wide">
+                                                                            Restore
+                                                                        </div>
+                                                                    </SwipeAction>
+                                                                </LeadingActions>
+                                                            }
+                                                            trailingActions={
+                                                                <TrailingActions>
+                                                                    <SwipeAction onClick={() => handleDeleteClick(item._id)}>
+                                                                        <div className="bg-red-50 text-red-600 flex items-center justify-center w-full h-full rounded-xl border border-red-100 shadow-sm text-sm font-bold tracking-wide">
+                                                                            Delete
+                                                                        </div>
+                                                                    </SwipeAction>
+                                                                </TrailingActions>
+                                                            }
+                                                        >
+                                                            <div className={`w-full border rounded-xl p-4 transition-all ${selectedIds.has(item._id) ? 'border-neutral-400 bg-neutral-50/50' : 'border-neutral-100 bg-white'}`}>
+                                                                <div className="flex items-start gap-3">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="mt-1 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                                                                        checked={selectedIds.has(item._id)}
+                                                                        onChange={() => handleSelectRow(item._id)}
+                                                                    />
+                                                                    <div className="flex-1 min-w-0" onClick={() => setPreviewItem(item)}>
+                                                                        {fields.map((field, i) => (
+                                                                            <div key={field} className={i === 0 ? 'mb-2' : 'flex justify-between items-baseline py-1 border-t border-neutral-50'}>
+                                                                                {i === 0 ? (
+                                                                                    <p className="text-sm font-bold text-neutral-400 line-through decoration-neutral-300 truncate">{renderCellValue(item, field)}</p>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">{modelConfig[field].label || field}</span>
+                                                                                        <span className="text-sm text-neutral-400 line-through decoration-neutral-300 text-right ml-2">{renderCellValue(item, field)}</span>
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                        {item.deletedAt && (
+                                                                            <p className="text-[11px] text-neutral-400 italic mt-2 pt-2 border-t border-neutral-50">
+                                                                                Archived {new Date(item.deletedAt).toLocaleDateString()}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </SwipeableListItem>
                                                     </div>
                                                 ))}
-                                                {item.deletedAt && (
-                                                    <p className="text-[11px] text-neutral-400 italic mt-2 pt-2 border-t border-neutral-50">
-                                                        Archived {new Date(item.deletedAt).toLocaleDateString()}
-                                                    </p>
-                                                )}
+                                            </SwipeableList>
+                                        ) : (
+                                            <div className="py-12 text-center text-neutral-400 text-sm">
+                                                The archive for {selectedModel} is currently empty.
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-neutral-100 pl-7">
-                                            <button onClick={() => handleRestoreClick(item._id)} className="text-sm text-neutral-600 hover:text-neutral-950 font-bold">
-                                                Restore
-                                            </button>
-                                            <button onClick={() => handleDeleteClick(item._id)} className="text-sm text-neutral-300 hover:text-red-600 font-bold transition-colors">
-                                                Delete
-                                            </button>
-                                        </div>
+                                        )}
                                     </div>
-                                ))}
-                                {data.length === 0 && (
-                                    <div className="py-12 text-center text-neutral-400 text-sm">
-                                        The archive for {selectedModel} is currently empty.
-                                    </div>
-                                )}
+                                </PullToRefresh>
                             </div>
 
                             {/* Desktop Table Layout */}

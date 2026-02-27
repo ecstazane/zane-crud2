@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('update', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('http://localhost:5174/');
     await page.getByRole('link', { name: 'Car' }).click();
     await page.getByRole('link', { name: 'Edit' }).click();
     await page.getByRole('textbox', { name: 'Enter brand...' }).click();

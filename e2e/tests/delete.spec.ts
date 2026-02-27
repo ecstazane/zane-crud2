@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('delete', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('http://localhost:5174/');
     await page.getByRole('link', { name: 'Car' }).click();
     await page.getByRole('button', { name: 'Archive' }).click();
     await page.getByRole('button', { name: 'Archive' }).nth(1).click();
